@@ -5,8 +5,11 @@ from fastapi import FastAPI, Request, Form, File, UploadFile, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import sqlalchemy as sa
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm declarative_base, sessionmaker
 from playwright.sync_api import sync_playwright, TimeoutError
+
+# Force Python logs to output immediately to Leapcell console
+os.environ["PYTHONUNBUFFERED"] = "1"
 
 # ==========================================
 # 1. DATABASE & APP INIT
@@ -48,16 +51,20 @@ def parse_args(raw_text):
 
 def load_profile_from_db(p, profile_name):
     db = SessionLocal()
-    profile_record = db.query(DBProfile).filter(DBProfile.name == profile_name).first()
-    db.close()
-    
-    if not profile_record:
-        raise Exception(f"❌ Profile not found in database: {profile_name}")
+    try:
+        profile_record = db.query(DBProfile).filter(DBProfile.name == profile_name).first()
+        if not profile_record:
+            raise Exception(f"❌ Profile not found in database: {profile_name}")
+        
+        # FIX: Fully read string data into independent RAM memory before closing DB link
+        session_json_string = str(profile_record.session_data)
+        session_dict = json.loads(session_json_string)
+    finally:
+        db.close()
 
-    session_dict = json.loads(profile_record.session_data)
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-    # FIXED: Added optimized flags to allow seamless execution inside headless cloud containers
+    # FIX: Clean Chromium tuning for ARM64 server architectures (Removed broken --single-process flag)
     browser = p.chromium.launch(
         headless=True,
         args=[
@@ -66,7 +73,7 @@ def load_profile_from_db(p, profile_name):
             "--disable-dev-shm-usage",
             "--disable-gpu",
             "--no-zygote",
-            "--single-process"
+            "--disable-extensions"
         ]
     )
     
@@ -220,6 +227,9 @@ def execute_cloud_bot(profile_name, products_raw, coupon):
         with sync_playwright() as p:
             browser, context, page = load_profile_from_db(p, profile_name)
             print(f"⚡ Starting cloud automation for: {profile_name}")
+            
+            # Set explicit fail-safes for slow connections
+            page.set_default_timeout(60000)
             page.goto("https://www.jiomart.com")
             page.wait_for_load_state("domcontentloaded")
 
@@ -230,7 +240,7 @@ def execute_cloud_bot(profile_name, products_raw, coupon):
             print(f"🏁 FINAL RESULT → {'SUCCESS' if success else 'FAILED'}")
             browser.close()
     except Exception as e:
-        print(f"❌ CRITICAL ERROR: {e}")
+        print(f"❌ CRITICAL ERROR IN TASK RUNNER: {e}")
 
 # ==========================================
 # 3. WEB SERVER ROUTES
