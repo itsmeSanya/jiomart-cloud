@@ -32,9 +32,9 @@
 
             <div class="card">
                 <h3>2. Launch Bot</h3>
-                <form id="launchForm" onsubmit="startBot(event)">
+                <form action="/launch" method="post" target="hidden_iframe">
                     <label>Select Profile:</label>
-                    <select name="selected_profile" id="selected_profile" required>
+                    <select name="selected_profile" required>
                         {% for profile in profiles %}
                             <option value="{{ profile.name }}">{{ profile.name }}</option>
                         {% else %}
@@ -43,13 +43,14 @@
                     </select>
 
                     <label>Products (url=qty, one per line):</label>
-                    <textarea name="products_raw" id="products_raw" rows="4" placeholder="https://www.jiomart.com/...=1" required></textarea>
+                    <textarea name="products_raw" rows="4" placeholder="https://www.jiomart.com/...=1" required></textarea>
 
                     <label>Coupon Code (Optional):</label>
-                    <input type="text" id="coupon" name="coupon" placeholder="Leave blank to skip">
+                    <input type="text" name="coupon" placeholder="Leave blank to skip">
 
-                    <button type="submit">🚀 Launch Orders</button>
+                    <button type="submit" onclick="appendTargetMsg()">🚀 Launch Orders</button>
                 </form>
+                <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
             </div>
         </div>
 
@@ -63,15 +64,8 @@
     </div>
 
     <script>
-        async function startBot(e) {
-            e.preventDefault();
-            const formData = new FormData();
-            formData.append('selected_profile', document.getElementById('selected_profile').value);
-            formData.append('products_raw', document.getElementById('products_raw').value);
-            formData.append('coupon', document.getElementById('coupon').value);
-            
-            document.getElementById('console').innerHTML += "===============================\n⏳ Sending payload to server...\n";
-            await fetch('/launch', { method: 'POST', body: formData });
+        function appendTargetMsg() {
+            document.getElementById('console').innerHTML += "===============================\n⏳ Launching task in background thread...\n";
         }
 
         async function clearLogs() {
@@ -79,13 +73,18 @@
             document.getElementById('console').innerHTML = "Logs cleared.<br>";
         }
 
+        // Keep pulling live backend updates every second
         setInterval(async () => {
-            const res = await fetch('/logs');
-            const data = await res.json();
-            const consoleDiv = document.getElementById('console');
-            if (data.logs !== consoleDiv.innerHTML) {
-                consoleDiv.innerHTML = data.logs;
-                consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            try {
+                const res = await fetch('/logs');
+                const data = await res.json();
+                const consoleDiv = document.getElementById('console');
+                if (data.logs !== consoleDiv.innerHTML) {
+                    consoleDiv.innerHTML = data.logs;
+                    consoleDiv.scrollTop = consoleDiv.scrollHeight;
+                }
+            } catch (e) {
+                // Silently catch network hiccups
             }
         }, 1000);
     </script>
