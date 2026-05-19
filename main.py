@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request, Form, File, UploadFile, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import sqlalchemy as sa
-from sqlalchemy.orm declarative_base, sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 from playwright.sync_api import sync_playwright, TimeoutError
 
 # Force Python logs to output immediately to Leapcell console
