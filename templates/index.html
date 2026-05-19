@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JioMart Cloud Bot</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; background: #1e1e1e; color: #fff; padding: 20px;}
+        .card { background: #2d2d2d; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);}
+        input, textarea, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #444; background: #111; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; padding: 12px 15px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; font-size: 16px;}
+        button:hover { background: #0056b3; }
+        .success-btn { background: #28a745; }
+        .success-btn:hover { background: #218838; }
+        #console { background: #000; color: #0f0; padding: 15px; height: 350px; overflow-y: auto; font-family: monospace; border-radius: 4px; border: 1px solid #555; white-space: pre-wrap; line-height: 1.4;}
+    </style>
+</head>
+<body>
+
+    <h2>☁️ JioMart Bot Dashboard</h2>
+
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 300px;">
+            <div class="card">
+                <h3>1. Upload JSON Profile</h3>
+                <form action="/upload_profile" method="post" enctype="multipart/form-data">
+                    <input type="text" name="profile_name" placeholder="Profile Name (e.g., 001)" required>
+                    <input type="file" name="file" accept=".json" required>
+                    <button type="submit" class="success-btn">Save to Cloud DB</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>2. Launch Bot</h3>
+                <form id="launchForm" onsubmit="startBot(event)">
+                    <label>Select Profile:</label>
+                    <select name="selected_profile" id="selected_profile" required>
+                        {% for profile in profiles %}
+                            <option value="{{ profile.name }}">{{ profile.name }}</option>
+                        {% else %}
+                            <option disabled>No profiles uploaded yet.</option>
+                        {% endfor %}
+                    </select>
+
+                    <label>Products (url=qty, one per line):</label>
+                    <textarea name="products_raw" id="products_raw" rows="4" placeholder="https://www.jiomart.com/...=1" required></textarea>
+
+                    <label>Coupon Code (Optional):</label>
+                    <input type="text" id="coupon" name="coupon" placeholder="Leave blank to skip">
+
+                    <button type="submit">🚀 Launch Orders</button>
+                </form>
+            </div>
+        </div>
+
+        <div style="flex: 1.2; min-width: 350px;" class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>📡 Live Terminal</h3>
+                <button onclick="clearLogs()" style="width: auto; padding: 5px 10px; background: #dc3545; font-size: 12px;">Clear Logs</button>
+            </div>
+            <div id="console">System ready. Waiting for bot to start...<br></div>
+        </div>
+    </div>
+
+    <script>
+        async function startBot(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('selected_profile', document.getElementById('selected_profile').value);
+            formData.append('products_raw', document.getElementById('products_raw').value);
+            formData.append('coupon', document.getElementById('coupon').value);
+            
+            document.getElementById('console').innerHTML += "===============================\n⏳ Sending payload to server...\n";
+            await fetch('/launch', { method: 'POST', body: formData });
+        }
+
+        async function clearLogs() {
+            await fetch('/clear_logs', { method: 'POST' });
+            document.getElementById('console').innerHTML = "Logs cleared.<br>";
+        }
+
+        setInterval(async () => {
+            const res = await fetch('/logs');
+            const data = await res.json();
+            const consoleDiv = document.getElementById('console');
+            if (data.logs !== consoleDiv.innerHTML) {
+                consoleDiv.innerHTML = data.logs;
+                consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
