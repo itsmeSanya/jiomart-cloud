@@ -57,7 +57,19 @@ def load_profile_from_db(p, profile_name):
     session_dict = json.loads(profile_record.session_data)
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-    browser = p.chromium.launch(headless=True)
+    # FIXED: Added optimized flags to allow seamless execution inside headless cloud containers
+    browser = p.chromium.launch(
+        headless=True,
+        args=[
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--no-zygote",
+            "--single-process"
+        ]
+    )
+    
     context = browser.new_context(
         storage_state=session_dict,
         user_agent=user_agent,
