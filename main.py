@@ -279,7 +279,12 @@ def read_root(request: Request):
     db = SessionLocal()
     profiles = db.query(DBProfile).all()
     db.close()
-    return templates.TemplateResponse("index.html", {"request": request, "profiles": profiles})
+    # ✅ FIX: Explicit keyword arguments for FastAPI templates
+    return templates.TemplateResponse(
+        request=request, 
+        name="index.html", 
+        context={"request": request, "profiles": profiles}
+    )
 
 @app.post("/upload_profile")
 async def upload_profile(profile_name: str = Form(...), file: UploadFile = File(...)):
@@ -319,4 +324,4 @@ def clear_logs():
     global live_logs
     live_logs = ""
     return {"status": "cleared"}
-  
+
